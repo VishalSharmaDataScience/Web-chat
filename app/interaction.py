@@ -37,32 +37,33 @@ def query_ollama(model_name, prompt):
     except Exception as e:
         return f"Error querying Ollama: {str(e)}"
 
-
 def generate_response(user_input, context, chat_history, website_url):
-    """Generates a conversational response using Mistral via Ollama."""
+    """
+    Generates a conversational response using Mistral via Ollama.
+    
+    Parameters:
+        user_input (str): User's query or input.
+        context (str): Extracted content from the website.
+        chat_history (list): List of prior interactions.
+        website_url (str): The website being explored.
+
+    Returns:
+        str: Bot's response to the user.
+    """
     model_name = "mistral"
 
-    # Check if context is empty
-    if not context.strip():
-        return "I'm unable to find relevant information from the provided URL. Could you clarify or provide more details?"
-
-    # Prepare the conversation history and context
+    # Prepare the conversation context
     history = "\n".join([f"Human: {chat['user']}\nAI: {chat['bot']}" for chat in chat_history])
     prompt = f"""
-    The user is asking a question about the content of the file hosted at the following URL: {website_url}.
-    Below is the context retrieved from the URL:
+    The user is asking about content hosted on {website_url}. Below is the extracted context:
     {context}
-    
- 
 
-    Based on this context, answer the user's question accurately and include the source of the information:
+    Based on this context, answer the user's query:
     Human: {user_input}
     AI:
     """
 
-    # Query Mistral via Ollama
+    # Query Mistral
     response = query_ollama(model_name, prompt)
 
-    # Add source to response
-    return f"{response}\n\n**Source**: {website_url}"
-
+    return response

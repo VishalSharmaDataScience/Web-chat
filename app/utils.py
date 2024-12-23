@@ -21,59 +21,78 @@ def check_website_exists(url):
 
 
 cache = Cache()
+def simulate_human_interaction(url, query, depth=3):
+    """
+    Dynamically navigate a website to fulfill a query, recursively exploring links as needed.
 
-def simulate_human_interaction(url, query):
+    Parameters:
+        url (str): Starting URL.
+        query (str): User's query.
+        depth (int): Maximum depth for link exploration.
+
+    Returns:
+        str: Extracted content matching the query or an appropriate error message.
     """
-    Retrieve information from the given URL by simulating human interaction.
-    Dynamically navigate to relevant sections based on the query context.
-    """
+    from urllib.parse import urljoin
+    import re
+
+    def match_query(content, keywords):
+        """Check if the content matches the query keywords."""
+        return any(keyword in content.lower() for keyword in keywords)
+
     with sync_playwright() as p:
         try:
-            print("Launching browser to simulate interaction...")
-            browser = p.chromium.launch(headless=True)  # Use headless mode for efficiency
+            print(f"Launching browser to explore {url}...")
+            browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
 
-            print("Navigating to the website...")
+            # Navigate to the main page
             page.goto(url, timeout=20000)
+            page.wait_for_load_state("domcontentloaded")
 
-            print("Analyzing query context...")
-            query_keywords = query.lower().split()  # Basic keyword extraction from query
+            print("Extracting content from the current page...")
+            page_content = page.inner_text("body").lower()
+            query_keywords = query.lower().split()
 
-            print("Looking for relevant links...")
-            links = page.query_selector_all("a")
-            relevant_links = []
-
-            for link in links:
-                text = link.inner_text().lower() if link.inner_text() else ""
-                href = link.get_attribute("href")
-                # Check if the link text matches any keywords in the query
-                if any(keyword in text for keyword in query_keywords):
-                    relevant_links.append(href)
-
-            if not relevant_links:
-                print("No relevant links found. Returning main page content.")
-                page_content = page.inner_text("body")
-                browser.close()
+            # Check if content on the current page matches the query
+            if match_query(page_content, query_keywords):
+                print("Matching content found on the main page.")
                 return page_content
 
-            # Navigate to the first relevant link and extract content
-            for link in relevant_links:
-                print(f"Navigating to {link}...")
-                if link.startswith("http"):
-                    page.goto(link)
-                else:
-                    page.goto(f"{url.rstrip('/')}/{link.lstrip('/')}")
+            # Stop if depth limit is reached
+            if depth == 0:
+                print("Depth limit reached. Stopping exploration.")
+                return "Relevant information not found within the exploration depth."
 
+            # Extract all links from the current page
+            print("Extracting links for further exploration...")
+            links = page.query_selector_all("a")
+            sub_links = [
+                urljoin(url, link.get_attribute("href"))
+                for link in links if link.get_attribute("href")
+            ]
+
+            # Explore sub-links recursively
+            for sub_link in sub_links:
+                print(f"Exploring sub-link: {sub_link}")
+                page.goto(sub_link, timeout=20000)
                 page.wait_for_load_state("domcontentloaded")
+                sub_content = page.inner_text("body").lower()
 
-                print("Extracting content from the relevant section...")
-                section_content = page.inner_text("body")  # Extract text content from the page body
-                if section_content.strip():
+                if match_query(sub_content, query_keywords):
+                    print("Matching content found in a sub-link.")
                     browser.close()
-                    return section_content
+                    return sub_content
 
+                # Recurse further into the sub-link
+                result = simulate_human_interaction(sub_link, query, depth - 1)
+                if "Relevant information not found" not in result:
+                    browser.close()
+                    return result
+
+            print("No matching content found in sub-links.")
             browser.close()
-            return "Unable to find detailed content for the query."
+            return "Could not find relevant content for your query."
         except Exception as e:
             return f"Error during interaction: {str(e)}"
