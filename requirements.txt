@@ -1,0 +1,17 @@
+# Dependency file
+streamlit
+playwright
+accelerate>=0.26.0
+openai
+streamlit
+langchain
+langchain-openai
+watchdog
+sentence-transformers
+torch
+transformers
+chromadb
+python-dotenv
+streamlit
+transformers
+requests

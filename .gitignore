@@ -1,0 +1,9 @@
+# Git Ignore
+*.pyc
+__pycache__/
+cache.db.db
+.DS_Store
+.env
+secrets.toml
+playwright/.local-browsers
+venv
